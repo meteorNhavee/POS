@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cash Register</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f3f3f3;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 700px;
+            margin: 10px auto;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #4caf50;
+        }
+        label {
+            font-weight: bold;
+            color: #333;
+        }
+        input[type="text"],
+        input[type="number"],
+        button {
+            margin: 5px 0;
+            padding: 10px;
+            width: calc(20% - 5px);
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #4caf50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            width: 20%;
+            text-align: center;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #receipt {
+            margin-top: 20px;
+            border-top: 1px solid #ccc;
+            padding-top: 10px;
+        }
+        #receipt h2 {
+            text-align: center;
+            margin-bottom: 10px;
+            color: #131613;
+        }
+        #receipt p {
+            color: #333;
+        }
+        #receiptList {
+            padding-left: 0;
+            list-style: none;
+        }
+        #receiptList li {
+            border-bottom: 1px solid #ccc;
+            padding: 10px 0;
+            margin-bottom: 10px;
+        }
+        #grandTotal, #change {
+            text-align: right;
+            font-weight: bold;
+            color: #121412;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Cash Register</h1>
+        <div>
+            
+            
+            <br>
+            <label for="itemCode">Item Code:</label>
+            <input type="text" id="itemCode" oninput="showItemDetails()">
+            <label for="itemName">Item Name:</label>
+            <input type="text" id="itemName" disabled>
+            <label for="price">Price:</label>
+            <input type="number" id="price" disabled>
+            <label for="quantity">Quantity:</label>
+            <input type="number" id="quantity">
+            <button onclick="addItem()">Add Item</button>
+            <button onclick="resetItems()">Reset Items</button>
+            <button onclick="showSalesHistory()">View Sales History</button>
+            
+        </div>
+        <div id="receipt">
+            <h2>"MONTANA SARI SARI STORE"</h2>
+            <p>VAT REG TIN *********************************</p>
+            <p>7112 UNIT C. P. <br>BURGOS BRGY. SAN DIONISIO <br>PARANAQUE CITY NCR 1700</p>
+            <h2>Receipt</h2>
+            <p id="cashierNameDisplay"></p>
+            <p id="dateTime">Date and Time: </p>
+            <ul id="receiptList"></ul>
+            <p id="totalItems">Total Items Sold: 0</p>
+            <p id="subTotal">Subtotal: ₱ 0.00</p>
+            <p id="vat">VAT (12%): ₱ 0.00</p>
+            <p id="grandTotal">Grand Total: ₱ 0.00</p>
+            <hr>
+            <label for="amountPaid">Amount Paid:</label>
+            <input type="number" id="amountPaid">
+            <button onclick="calculateChange()">Calculate Change</button>
+            <p id="change">Change: ₱ 0.00</p>
+        </div>
+        <!-- Inventory Section -->
+        <div>
+            <h2>Inventory</h2>
+            <ul id="inventoryList"></ul>
+        </div>
+        <div id="salesHistory">
+            <h2>Sales History</h2>
+            <ul id="salesHistoryList"></ul>
+        </div>
+
+        <!-- Print Section -->
+        <div>
+            <button onclick="printReceipt()">Print Receipt</button>
+            <button onclick="logOut()">Log Out</button>
+        </div>
+    </div>
+
+    <script>
+        let items = {
+            "001": { name: "Magic Sarap", price: 5.00, stock: 100 },
+            "002": { name: "Knorr Sinigang Mix Original", price: 20.00, stock: 100 },
+            "003": { name: "Knorr Pork Cube", price: 8.00, stock: 100 },
+            "004": { name: "Argentina Corned Beff", price: 35.00, stock: 100 },
+            "005": { name: "All Purpose Cream", price: 75.00, stock: 100 },
+            "006": { name: "Coco Mama 200ml", price: 40.00, stock: 100 },
+            "007": { name: "500g Pancit Bihon", price: 42.00, stock: 100 },
+            "008": { name: "250ml Tomato Sauce", price: 35.00, stock: 100 },
+            "009": { name: "250g Tomato Paste", price: 35.00, stock: 100 },
+            "010": { name: "Mega Sardines Spicy", price: 30.00, stock: 100 }
+        };
+        
+        let salesHistory = [];
+        let receiptItems = [];
+        let totalItemsSold = 0;
+        let subtotal = 0;
+        let vatRate = 0.12;
+        let cashierName = "";
+        let cashierId = "";
+
+       
+        function showItemDetails() {
+            let itemCode = document.getElementById("itemCode").value;
+            let itemNameInput = document.getElementById("itemName");
+            let priceInput = document.getElementById("price");
+            
+            if (items[itemCode]) {
+                itemNameInput.value = items[itemCode].name;
+                priceInput.value = items[itemCode].price.toFixed();
+            } else {
+                itemNameInput.value = "";
+                priceInput.value = "";
+            }
+        }
+
+        function addItem() {
+    let itemCode = document.getElementById("itemCode").value;
+    let itemName = document.getElementById("itemName").value;
+    let price = parseFloat(document.getElementById("price").value);
+    let quantity = parseInt(document.getElementById("quantity").value);
+    let transaction = {
+        dateTime: new Date().toLocaleString(),
+        items: receiptItems.slice(), // Copy of receiptItems array
+        subtotal: subtotal * vatRate,
+        total: subtotal + (subtotal * vatRate)
+    };
+    salesHistory.push(transaction);
+
+    if (items[itemCode]) {
+        if (quantity <= items[itemCode].stock) {
+            let totalPerItem = price * quantity;
+            let priceExcludingVAT = totalPerItem / (1 + vatRate);
+            receiptItems.push({ itemName, price: priceExcludingVAT, quantity, total: totalPerItem });
+            totalItemsSold += quantity;
+            subtotal += totalPerItem;
+            items[itemCode].stock - quantity; // Update stock
+            updateReceipt();
+            updateInventory(itemCode, quantity); // Update inventory
+            playSound('register');
+        } else {
+            alert("Not enough stock available for this item!");
+        }
+    } else {
+        alert("Invalid item code!");
+    }
+
+    updateReceipt();
+    playSound('register');
+}
+        
+        function resetItems() {
+            if (receiptItems.length > 0) {
+                let lastItem = receiptItems.pop();
+                totalItemsSold -= lastItem.quantity;
+                subtotal -= lastItem.total;
+                updateReceipt();
+            }
+
+            // Add this line to update the inventory when resetting items
+            for (let item of receiptItems) {
+        updateInventory(item.itemCode, item.quantity);
+    }
+        if (receiptItems.length > 0) {
+        let lastTransaction = salesHistory.pop();
+        updateSalesHistory();
+    }
+}
+
+        
+        
+
+        function registerCashier() {
+            cashierName = document.getElementById("cashierName").value;
+            updateReceipt();
+            playSound('register');
+        }
+
+        function updateReceipt() {
+    let receiptList = document.getElementById("receiptList");
+    let totalItemsElement = document.getElementById("totalItems");
+    let subTotalElement = document.getElementById("subTotal");
+    let vatElement = document.getElementById("vat");
+    let grandTotalElement = document.getElementById("grandTotal");
+    let dateTimeElement = document.getElementById("dateTime");
+    let cashierNameElement = document.getElementById("cashierNameDisplay");
+
+    let currentDate = new Date();
+    let formattedDateTime = currentDate.toLocaleString();
+
+    dateTimeElement.textContent = `Date and Time: ${formattedDateTime}`;
+    cashierNameElement.textContent = `Cashier: ${cashierName || "Not logged in" }`;
+
+    receiptList.innerHTML = "";
+    receiptItems.forEach(item => {
+        let li = document.createElement("li");
+        li.innerHTML = `
+            <div>${item.itemName} - ₱ ${item.price.toFixed(2)} x ${item.quantity}</div>
+            <div>Total: ₱ ${item.total.toFixed(2)}</div>
+        `;
+        receiptList.appendChild(li);
+    });
+
+    totalItemsElement.textContent = `Total Items Sold: ${totalItemsSold}`;
+    subTotalElement.textContent = `Subtotal: ₱ ${subtotal.toFixed(2)}`;
+    let vatAmount = subtotal * 0.12;
+    vatElement.textContent = `VAT (12%): ₱ ${vatAmount.toFixed(2)}`;
+    let grandTotal = subtotal + vatAmount;
+    grandTotalElement.textContent = `Grand Total: ₱ ${grandTotal.toFixed(2)}`;
+}
+        // New function to populate inventory list
+        function populateInventory() {
+            let inventoryList = document.getElementById("inventoryList");
+            inventoryList.innerHTML = "";
+
+            for (let key in items) {
+                let li = document.createElement("li");
+                li.textContent = `${key}: ${items[key].name} - Stock: ${items[key].stock}`;
+                inventoryList.appendChild(li);
+            }
+        }
+
+        // New function to update inventory stock after adding an item
+        function updateInventory(itemCode, quantity) {
+            if (items[itemCode]) {
+                items[itemCode].stock -= quantity;
+                populateInventory();
+            }
+        }
+
+        // New function to print receipt
+        function printReceipt() {
+            // Logic for printing the receipt
+            window.print();
+        }
+
+        // Call populateInventory to initially populate the inventory list
+        populateInventory();
+
+        function calculateChange() {
+            let amountPaid = parseFloat(document.getElementById("amountPaid").value);
+            let grandTotal = subtotal + (subtotal * vatRate);
+
+            if (isNaN(amountPaid) || amountPaid < grandTotal) {
+                alert("Invalid amount paid!");
+                return;
+            }
+
+            let change = amountPaid - grandTotal;
+            document.getElementById("change").textContent = `Change: ₱ ${change.toFixed(2)}`;
+            // Create a new transaction object with the change details
+    let transaction = {
+        dateTime: new Date().toLocaleString(),
+        items: receiptItems.slice(),
+        subtotal: subtotal,
+        total: grandTotal,
+        change: change
+    };
+
+    // Add the transaction to the sales history
+    salesHistory.push(transaction);
+    updateSalesHistory();
+            
+            playSound('change');
+        }
+
+        function showSalesHistory() {
+    let salesHistoryList = document.getElementById("salesHistoryList");
+    salesHistory.forEach(transaction => {
+        let li = document.createElement("li");
+        li.innerHTML = `
+            <div>Date: ${transaction.dateTime}</div>
+            <div>Subtotal: ₱ ${transaction.subtotal.toFixed(2)}</div>
+            <div>Total: ₱ ${(transaction.total).toFixed(2)}</div>
+            <ul>${transaction.items.map(item => `<li>${item.itemName} - ₱ ${item.price.toFixed(2)} x ${item.quantity}</li>`).join('')}</ul>
+        `;
+        salesHistoryList.appendChild(li);
+    });
+}
+// Call updateSalesHistory whenever a new transaction is added or reset
+function updateSalesHistory() {
+    showSalesHistory();
+}
+
+function logOut() {
+    // Clear the cashier name and reset the receipt
+    cashierName = "";
+    updateReceipt();
+    playSound('register');
+}
+      function playSound(soundType) {
+            let audio = new Audio();
+            if (soundType === 'register') {
+                audio.src = 'register_sound.mp3';
+            } else if (soundType === 'change') {
+                audio.src = 'change_sound.mp3';
+            }
+            audio.play();
+        }
+    </script>
+</body>
+</html>
